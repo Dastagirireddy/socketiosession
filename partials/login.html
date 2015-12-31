@@ -1,0 +1,25 @@
+<div class="container">
+	<div class="panel panel-info panel-custom">
+		<div class="panel-heading">
+			<h3 class="text-center">Login</h3>
+		</div>
+		<div class="panel-body">
+			<form ng-submit="login()" name="loginForm">
+				<div class="form-group">
+					<label for="email"></label>
+					<input type="email" ng-model="user.email" id="email" class="form-control" placeholder="enter your email,.." autofocus="true" />
+				</div>
+				<div class="form-group">
+					<label for="password"></label>
+					<input type="password" ng-model="user.password" id="password" class="form-control"  placeholder="enter your password,.." />
+				</div>
+				<div class="">
+					<a href="javascript:void(0);" ui-sref="register">Click here to register</a>
+				</div>
+				<div class="form-group text-center submit-btn">
+					<input type="submit" value="Login" class="btn btn-danger" />
+				</div>
+			</form>
+		</div>
+	</div>
+</div>

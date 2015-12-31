@@ -1,0 +1,50 @@
+<header>
+	<div class="navbar">
+		<div class="brand-group">
+			<a href="" class="navbar-brand text-center">
+				<span class="brand-title">
+					<span class="footer-site-brand">
+					    <span class="footer-brand">Pro</span>
+					    <span>Analytics</span>
+					</span>
+				</span>
+				<span class="brand-letter">S</span>
+			</a>
+			<a href="javascript:void(0);" class="navbar-brand" toggle-directive>
+				<i class="fa fa-bars"></i>
+			</a>
+		</div>
+		<div class="container">
+			<ul class="nav navbar-nav navbar-custom pull-right">
+				<li>
+					<a href="">
+						<i class="fa fa-lg fa-envelope"></i>
+					</a>
+				</li>
+				<li>
+					<a href="">
+						<i class="fa fa-lg fa-bookmark"></i>
+					</a>
+				</li>
+				<li>
+					<a href="">
+						<i class="fa fa-lg fa-globe"></i>
+					</a>
+				</li>
+				<li class="dropdown" dropdown-directive>
+					<a href="javascript:void(0);" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="true">
+						{{ loginuser.username | uppercase }}
+						<span class="caret"></span>
+					</a>
+					<ul class="dropdown-menu">
+						<li><a href="#">Profile</a></li>
+						<li><a href="#">Inbox</a></li>
+						<li><a href="#">Messages <span class="badge badge-danger pull-right">5</span></a></li>
+						<li role="separator" class="divider"></li>
+						<li><a href="#" ng-click="logout()">Logout</a></li>
+					</ul>
+				</li>
+			</ul>
+		</div>
+	</div>
+</header>
