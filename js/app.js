@@ -93,12 +93,21 @@ app.run(function($rootScope, AuthService, $rest, $location, $state){
 
 app.controller('MainController', function($scope, $state, $rest){
 
+
+	var socket = io.connect(window.location.host, { 'force new connection': true });
+	socket.on('auth', function(status, session){
+
+		console.log(status);
+		console.log(session);
+	});
+
 	var http = $rest('/api/logout');
 	$scope.logout = function() {
 
 		http.get()
 			.then(function(data){
 
+				socket.emit('logout');
 				$state.go('login');
 			}, function(err){
 
@@ -109,12 +118,7 @@ app.controller('MainController', function($scope, $state, $rest){
 
 app.controller('DashboardController', function($scope, $state){
 
-	var socket = io.connect(window.location.host, { 'force new connection': true });
-	socket.on('auth', function(status, session){
-
-		console.log(status);
-		console.log(session);
-	});
+	
 });
 
 app.controller('LoginController', function($scope, $state, $rest, AuthService, $rootScope){

@@ -153,7 +153,9 @@ io.use(function(client, next){
 			.findOneAsync({'sessionId': session})
 			.then(function(result){
 
-				handshake.session = result.session;
+				var userSession = JSON.parse(result.session);
+				userSession['sessionId'] = session;
+				handshake.session = userSession;
 				next();
 			})
 			.catch(function(err){
@@ -163,27 +165,75 @@ io.use(function(client, next){
 	});
 });
 
+var socketMap = {};
+
 io.on('connection', function(client){
 
 	console.log(client.id + ' has been connected to socket server');
-	console.log(getSocketSession(client));
 
 	var socketSession = getSocketSession(client);
 
 	if(typeof socketSession !== undefined) {
 
+		var id = socketSession.sessionId;
+		
+		if(!socketMap.hasOwnProperty(id)) {
+
+			socketMap[id] = [];
+			socketMap[id].push(client.id);
+		} else {
+
+			socketMap[id].push(client.id);
+		}
+		console.log(stringifyJSON(socketMap));
 		client.emit('auth', 'You are Authorized user.', socketSession.user);
 	} else {
 
 		client.emit('auth', 'You are not Authorized user.', undefined);
 	}
+
+	client.on('logout', function() {
+
+		client.disconnect();
+	});
+
+	client.on('disconnect', function(){
+
+		var id = socketSession.sessionId;
+		deleteClientSocket(id, client);
+		console.log(stringifyJSON(socketMap));
+	});
 });
+
+function getRandomNumber() {
+
+	return Math.floor(Math.random() * 10000000);
+}
+
+function stringifyJSON(data) {
+
+	return JSON.stringify(data);
+}
+
+function deleteClientSocket(mapId, client) {
+
+	if(socketMap.hasOwnProperty(mapId)) {
+
+		var index = socketMap[mapId].indexOf(client.id);
+		socketMap[mapId].splice(index, 1);
+
+		if(socketMap[mapId].length === 0) {
+
+			delete socketMap[mapId];
+		}
+	}
+}
 
 function getSocketSession(client) {
 
 	if(typeof client.request.session !== undefined) {
 
-		return JSON.parse(client.request.session);
+		return client.request.session;
 	} else {
 
 		return undefined;
