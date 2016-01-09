@@ -1,241 +1,291 @@
-var express 	= require('express'),
-	bodyParser 	= require('body-parser'),
-	mongoose 	= require('mongoose'),
-	Session 	= require('express-session'),
-	MongoStore 	= require('connect-mongo')(Session),
-	cookieParser= require('cookie-parser');
+var express = require('express'),
+    bodyParser = require('body-parser'),
+    mongoose = require('mongoose'),
+    Session = require('express-session'),
+    MongoStore = require('connect-mongo')(Session),
+    cookieParser = require('cookie-parser');
 
-var Promise 	= require("bluebird");
-var app 		= express();
-var port 		= process.env.PORT || 3000;
-var Schema 		= mongoose.Schema;
+var Promise = require("bluebird");
+var app = express();
+var port = process.env.PORT || 3000;
+var Schema = mongoose.Schema;
 
-var http 		= require('http').createServer(app);
-var io 			= require('socket.io')(http);
+var http = require('http').createServer(app);
+var io = require('socket.io')(http);
 
 Promise.promisifyAll(mongoose);
 
 mongoose
-	.connectAsync('mongodb://localhost:27017/socketiosession')
-	.catch(function(err){
+    .connectAsync('mongodb://localhost:27017/socketiosession')
+    .catch(function(err) {
 
-		console.log(err);
-	});
+        console.log(err);
+    });
 
-var UserSchema 	= new Schema({
-	username	: { type: String, required: true },
-	email		: { type: String, unique: true, required: true },
-	password	: { type: String, required: true },
-	created_at	: { type: Date, default: Date.now },
-	last_login	: { type: Date }
+var UserSchema = new Schema({
+    username: {
+        type: String,
+        required: true
+    },
+    email: {
+        type: String,
+        unique: true,
+        required: true
+    },
+    password: {
+        type: String,
+        required: true
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    last_login: {
+        type: Date
+    }
 });
 
-var SessionSchema 	= new Schema({
-	sessionId		: { type: String },
-	session 		: { type: String },
-	expires			: { type: String }
+var SessionSchema = new Schema({
+    _id: {
+        type: String
+    },
+    session: {
+        type: String
+    },
+    expires: {
+        type: String
+    }
 });
 
-var UserModel 		= mongoose.model('User', UserSchema, 'users');
-var SessionModel 	= mongoose.model('Session', SessionSchema, 'sessions');
+var UserModel = mongoose.model('User', UserSchema, 'users');
+var SessionModel = mongoose.model('Session', SessionSchema, 'sessions');
 
-var SessionStore 	= new MongoStore({
-	url: 'mongodb://localhost:27017/socketiosession',
-	autoRemove: 'interval',
-	autoRemoveInterval: 10
+var SessionStore = new MongoStore({
+    url: 'mongodb://localhost:27017/socketiosession',
+    autoRemove: 'interval',
+    autoRemoveInterval: 10
 });
 
-app.use(express.static(__dirname));
+app.use(express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 app.use(Session({
-	name: '__proanalytic',
-	secret: 'proanalytic',
-	store: SessionStore,
-	resave: true,
-	saveUninitialized: true
+    name: '__proanalytic',
+    secret: 'proanalytic',
+    store: SessionStore,
+    resave: true,
+    saveUninitialized: true
 }));
+
+// Add headers
+app.use(function(req, res, next) {
+
+    // Website you wish to allow to connect
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    // Request methods you wish to allow
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+
+    // Request headers you wish to allow
+    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+
+    // Set to true if you need the website to include cookies in the requests sent
+    // to the API (e.g. in case you use sessions)
+    res.setHeader('Access-Control-Allow-Credentials', true);
+
+    // Pass to next layer of middleware
+    next();
+});
 
 function AuthStatus(req, res, next) {
 
-	if(req.session && req.session.user) {
+    if(req.session && req.session.user) {
 
-		next();
-	} else {
+        next();
+    } else {
 
-		res.statusCode = 401;
-		res.end();
-	}
+        res.statusCode = 401;
+        res.end();
+    }
 }
 
-app.get('/api/auth', AuthStatus, function(req, res){
+app.get('/api/v1/widget', function(req, res) {
 
-	res.json({
-		user: req.session.user
-	});
+    res.json({
+        status: 'Msg from proanalytic server'
+    });
 });
 
-app.get('/api/logout', AuthStatus, function(req, res){
+app.get('/api/auth', AuthStatus, function(req, res) {
 
-	req.session.destroy(function(err){
-		console.log(err);
-	});
-
-	res.json({
-		statusText: 'Logged out successfully...'
-	});
+    res.json({
+        user: req.session.user
+    });
 });
 
-app.post('/api/login', function(req, res){
+app.get('/api/logout', AuthStatus, function(req, res) {
 
-	var user 	= req.body;
-	if(req.session && !req.session.user) {
+    req.session.destroy(function(err) {
+        console.log(err);
+    });
 
-		UserModel
-			.findOneAsync(req.body)
-			.then(function(result){
-
-				result.last_login = new Date();
-				return result.saveAsync();
-			})
-			.then(function(result){
-
-				result.password = undefined;
-				req.session.user = result;
-				res.json(result);
-			})
-			.catch(function(err){
-
-				res.statusCode = 401;
-				res.end();
-			});
-	}
+    res.json({
+        statusText: 'Logged out successfully...'
+    });
 });
 
-app.post('/api/users', function(req, res){
+app.post('/api/login', function(req, res) {
 
-	var User 		= new UserModel();
-	var user 		= req.body;
+    var user = req.body;
+    if(req.session && !req.session.user) {
 
-	User.username 	= user.username;
-	User.email 		= user.email;
-	User.password 	= user.password;
-	User.created_at = new Date();
+        UserModel
+            .findOneAsync(req.body)
+            .then(function(result) {
 
-	User
-		.saveAsync()
-		.then(function(result){
+                result.last_login = new Date();
+                return result.saveAsync();
+            })
+            .then(function(result) {
 
-			delete result.password;
-			res.json(result);
-		})
-		.catch(function(err){
+                result.password = undefined;
+                req.session.user = result;
+                res.json(result);
+            })
+            .catch(function(err) {
 
-			res.statusCode = 400;
-			res.end();
-		})
+                res.statusCode = 401;
+                res.end();
+            });
+    }
 });
 
-http.listen(port, function(){
-	console.log("Http server running at http://localhost:", port);
+app.post('/api/users', function(req, res) {
+
+    var User = new UserModel();
+    var user = req.body;
+
+    User.username = user.username;
+    User.email = user.email;
+    User.password = user.password;
+    User.created_at = new Date();
+
+    User
+        .saveAsync()
+        .then(function(result) {
+
+            delete result.password;
+            res.json(result);
+        })
+        .catch(function(err) {
+
+            res.statusCode = 400;
+            res.end();
+        })
 });
 
-io.use(function(client, next){
+http.listen(port, function() {
+    console.log("Http server running at http://localhost:", port);
+});
 
-	var cookies 		= client.handshake.headers.cookie;
-	var handshake 		= client.request;
-	var parseCookie 	= cookieParser('proanalytic');
+io.use(function(client, next) {
 
-	parseCookie(handshake, null, function (err, data) {
+    var cookies = client.handshake.headers.cookie;
+    var handshake = client.request;
+    var parseCookie = cookieParser('proanalytic');
 
-		var session = handshake.signedCookies['__proanalytic'];
+    parseCookie(handshake, null, function(err, data) {
 
-		SessionModel
-			.findOneAsync({'sessionId': session})
-			.then(function(result){
+        var session = handshake.signedCookies['__proanalytic'];
 
-				var userSession = JSON.parse(result.session);
-				userSession['sessionId'] = session;
-				handshake.session = userSession;
-				next();
-			})
-			.catch(function(err){
+        SessionModel
+            .findOneAsync({
+                '_id': session
+            })
+            .then(function(result) {
 
-				console.log(err);
-			});
-	});
+                var userSession = JSON.parse(result.session);
+                userSession['sessionId'] = session;
+                handshake.session = userSession;
+                next();
+            })
+            .catch(function(err) {
+
+                console.log(err);
+            });
+    });
 });
 
 var socketMap = {};
 
-io.on('connection', function(client){
+io.on('connection', function(client) {
 
-	console.log(client.id + ' has been connected to socket server');
+    console.log(client.id + ' has been connected to socket server');
 
-	var socketSession = getSocketSession(client);
+    var socketSession = getSocketSession(client);
 
-	if(typeof socketSession !== undefined) {
+    if(typeof socketSession !== undefined) {
 
-		var id = socketSession.sessionId;
-		
-		if(!socketMap.hasOwnProperty(id)) {
+        var id = socketSession.sessionId;
 
-			socketMap[id] = [];
-			socketMap[id].push(client.id);
-		} else {
+        if(!socketMap.hasOwnProperty(id)) {
 
-			socketMap[id].push(client.id);
-		}
-		console.log(stringifyJSON(socketMap));
-		client.emit('auth', 'You are Authorized user.', socketSession.user);
-	} else {
+            socketMap[id] = [];
+            socketMap[id].push(client.id);
+        } else {
 
-		client.emit('auth', 'You are not Authorized user.', undefined);
-	}
+            socketMap[id].push(client.id);
+        }
+        console.log(stringifyJSON(socketMap));
+        client.emit('auth', 'You are Authorized user.', socketSession.user);
+    } else {
 
-	client.on('logout', function() {
+        client.emit('auth', 'You are not Authorized user.', undefined);
+    }
 
-		client.disconnect();
-	});
+    client.on('logout', function() {
 
-	client.on('disconnect', function(){
+        client.disconnect();
+    });
 
-		var id = socketSession.sessionId;
-		deleteClientSocket(id, client);
-		console.log(stringifyJSON(socketMap));
-	});
+    client.on('disconnect', function() {
+
+        var id = socketSession.sessionId;
+        deleteClientSocket(id, client);
+        console.log(stringifyJSON(socketMap));
+    });
 });
 
 function getRandomNumber() {
 
-	return Math.floor(Math.random() * 10000000);
+    return Math.floor(Math.random() * 10000000);
 }
 
 function stringifyJSON(data) {
 
-	return JSON.stringify(data);
+    return JSON.stringify(data);
 }
 
 function deleteClientSocket(mapId, client) {
 
-	if(socketMap.hasOwnProperty(mapId)) {
+    if(socketMap.hasOwnProperty(mapId)) {
 
-		var index = socketMap[mapId].indexOf(client.id);
-		socketMap[mapId].splice(index, 1);
+        var index = socketMap[mapId].indexOf(client.id);
+        socketMap[mapId].splice(index, 1);
 
-		if(socketMap[mapId].length === 0) {
+        if(socketMap[mapId].length === 0) {
 
-			delete socketMap[mapId];
-		}
-	}
+            delete socketMap[mapId];
+        }
+    }
 }
 
 function getSocketSession(client) {
 
-	if(typeof client.request.session !== undefined) {
+    if(typeof client.request.session !== undefined) {
 
-		return client.request.session;
-	} else {
+        return client.request.session;
+    } else {
 
-		return undefined;
-	}
+        return undefined;
+    }
 }
